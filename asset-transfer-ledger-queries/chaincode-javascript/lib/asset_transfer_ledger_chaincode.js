@@ -68,42 +68,45 @@
 'use strict';
 
 const {Contract} = require('fabric-contract-api');
+const sha256 = require('sha256'); 
+const uuid = require('uuid');
 
 class Chaincode extends Contract {
 
 	// CreateAsset - create a new asset, store into chaincode state
-	async CreateAsset(ctx, assetID, color, size, owner, appraisedValue) {
-		const exists = await this.AssetExists(ctx, assetID);
+	async CreateAsset(ctx, owner, couponId, value, expiration, ) {
+		const exists = await this.AssetExists(ctx, couponId);
 		if (exists) {
-			throw new Error(`The asset ${assetID} already exists`);
+			throw new Error(`The coupon ${couponId} already exists`);
 		}
 
 		// ==== Create asset object and marshal to JSON ====
 		let asset = {
-			docType: 'asset',
-			assetID: assetID,
-			color: color,
-			size: size,
-			owner: owner,
-			appraisedValue: appraisedValue
-		};
+            docType: 'asset',
+            couponId: couponId,
+            value: value,
+            expiration: expiration,
+            user: sha256(owner),
+            uuid: uuid.v5(owner, '1b671a64-40d5-491e-99b0-da01ff1f3341'), // modified
+            redeemed: 'false'
+        };
 
 
 		// === Save asset to state ===
-		await ctx.stub.putState(assetID, Buffer.from(JSON.stringify(asset)));
-		let indexName = 'color~name';
-		let colorNameIndexKey = await ctx.stub.createCompositeKey(indexName, [asset.color, asset.assetID]);
+		await ctx.stub.putState(couponId, Buffer.from(JSON.stringify(asset)));
+		let indexName = 'coupon~redeemed';
+		let couponRedeemedIndexKey = await ctx.stub.createCompositeKey(indexName, [asset.redeemed, asset.couponId]);
 
 		//  Save index entry to state. Only the key name is needed, no need to store a duplicate copy of the marble.
 		//  Note - passing a 'nil' value will effectively delete the key from state, therefore we pass null character as value
-		await ctx.stub.putState(colorNameIndexKey, Buffer.from('\u0000'));
+		await ctx.stub.putState(couponRedeemedIndexKey, Buffer.from('\u0000'));
 	}
 
 	// ReadAsset returns the asset stored in the world state with given id.
 	async ReadAsset(ctx, id) {
 		const assetJSON = await ctx.stub.getState(id); // get the asset from chaincode state
 		if (!assetJSON || assetJSON.length === 0) {
-			throw new Error(`Asset ${id} does not exist`);
+			throw new Error(`Coupon ${id} does not exist`);
 		}
 
 		return assetJSON.toString();
@@ -138,13 +141,13 @@ class Chaincode extends Contract {
 		await ctx.stub.deleteState(id); //remove the asset from chaincode state
 
 		// delete the index
-		let indexName = 'color~name';
-		let colorNameIndexKey = ctx.stub.createCompositeKey(indexName, [assetJSON.color, assetJSON.assetID]);
-		if (!colorNameIndexKey) {
+		let indexName = 'coupon~redeemed';
+		let couponRedeemedIndexKey = ctx.stub.createCompositeKey(indexName, [assetJSON.redeemed, assetJSON.couponId]);
+		if (!couponRedeemedIndexKey) {
 			throw new Error(' Failed to create the createCompositeKey');
 		}
 		//  Delete index entry to state.
-		await ctx.stub.deleteState(colorNameIndexKey);
+		await ctx.stub.deleteState(couponRedeemedIndexKey);
 	}
 
 	// TransferAsset transfers a asset by setting a new owner name on the asset
@@ -162,11 +165,32 @@ class Chaincode extends Contract {
 			jsonResp.error = 'Failed to decode JSON of: ' + assetName;
 			throw new Error(jsonResp);
 		}
-		assetToTransfer.owner = newOwner; //change the owner
+		assetToTransfer.user = sha256(newOwner); //change the owner
 
 		let assetJSONasBytes = Buffer.from(JSON.stringify(assetToTransfer));
 		await ctx.stub.putState(assetName, assetJSONasBytes); //rewrite the asset
 	}
+
+		// TransferAsset transfers a asset by setting a new owner name on the asset
+		async SetCouponToRedeemed(ctx, assetName) {
+
+			let assetAsBytes = await ctx.stub.getState(assetName);
+			if (!assetAsBytes || !assetAsBytes.toString()) {
+				throw new Error(`Asset ${assetName} does not exist`);
+			}
+			let assetToTransfer = {};
+			try {
+				assetToTransfer = JSON.parse(assetAsBytes.toString()); //unmarshal
+			} catch (err) {
+				let jsonResp = {};
+				jsonResp.error = 'Failed to decode JSON of: ' + assetName;
+				throw new Error(jsonResp);
+			}
+			assetToTransfer.redeemed = 'true'; //change the owner
+	
+			let assetJSONasBytes = Buffer.from(JSON.stringify(assetToTransfer));
+			await ctx.stub.putState(assetName, assetJSONasBytes); //rewrite the asset
+		}
 
 	// GetAssetsByRange performs a range query based on the start and end keys provided.
 	// Read-only function results are not typically submitted to ordering. If the read-only
@@ -228,7 +252,7 @@ class Chaincode extends Contract {
 		let queryString = {};
 		queryString.selector = {};
 		queryString.selector.docType = 'asset';
-		queryString.selector.owner = owner;
+		queryString.selector.user = sha256(owner);
 		return await this.GetQueryResultForQueryString(ctx, JSON.stringify(queryString)); //shim.success(queryResults);
 	}
 
@@ -278,7 +302,8 @@ class Chaincode extends Contract {
 	// Only available on state databases that support rich query (e.g. CouchDB)
 	// Paginated queries are only valid for read only transactions.
 	async QueryAssetsWithPagination(ctx, queryString, pageSize, bookmark) {
-
+		const owner = sha256(queryString)
+		const queryString1 = `{"selector":{"docType":"asset","owner":${owner}}, "use_index":["_design/indexOwnerDoc", "indexOwner"]}`
 		const {iterator, metadata} = await ctx.stub.getQueryResultWithPagination(queryString, pageSize, bookmark);
 		const results = await this.GetAllResults(iterator, false);
 
@@ -290,7 +315,7 @@ class Chaincode extends Contract {
 		return JSON.stringify(results);
 	}
 
-	// GetAssetHistory returns the chain of custody for an asset since issuance.
+	//GetAssetHistory returns the chain of custody for an asset since issuance.
 	async GetAssetHistory(ctx, assetName) {
 
 		let resultsIterator = await ctx.stub.getHistoryForKey(assetName);
@@ -301,6 +326,13 @@ class Chaincode extends Contract {
 
 	// AssetExists returns true when asset with given ID exists in world state
 	async AssetExists(ctx, assetName) {
+		// ==== Check if asset already exists ====
+		let assetState = await ctx.stub.getState(assetName);
+		return assetState && assetState.redeemed;
+	}
+
+	// Coupon redeemed returns true when asset with given coupon ID is redeemed
+	async CouponRedeemed(ctx, assetName) {
 		// ==== Check if asset already exists ====
 		let assetState = await ctx.stub.getState(assetName);
 		return assetState && assetState.length > 0;
@@ -343,57 +375,51 @@ class Chaincode extends Contract {
 	async InitLedger(ctx) {
 		const assets = [
 			{
-				assetID: 'asset1',
-				color: 'blue',
-				size: 5,
-				owner: 'Tom',
-				appraisedValue: 100
+				owner: 'Tom Brady',
+				couponId: 'coupon1',
+				value: 7,
+				expiration: '2020-12-13'
 			},
 			{
-				assetID: 'asset2',
-				color: 'red',
-				size: 5,
-				owner: 'Brad',
-				appraisedValue: 100
+				owner: "Beth Lin",
+				couponId: 'coupon2',
+				value: 5,
+				expiration: '2020-12-25'
+
 			},
 			{
-				assetID: 'asset3',
-				color: 'green',
-				size: 10,
-				owner: 'Jin Soo',
-				appraisedValue: 200
+				owner: 'Jin Soo Ra',
+				couponId: 'coupon3',
+				value: 5,
+				expiration: '2020-12-31'
 			},
 			{
-				assetID: 'asset4',
-				color: 'yellow',
-				size: 10,
-				owner: 'Max',
-				appraisedValue: 200
+				owner: 'Max Ferg',
+				couponId: 'coupon4',
+				value: 10,
+				expiration: '2021-01-01'
 			},
 			{
-				assetID: 'asset5',
-				color: 'black',
-				size: 15,
-				owner: 'Adriana',
-				appraisedValue: 250
+				owner: 'Adriana Ille',
+				couponId: 'coupon5',
+				value: 7,
+				expiration: '2020-12-15'
 			},
 			{
-				assetID: 'asset6',
-				color: 'white',
-				size: 15,
-				owner: 'Michel',
-				appraisedValue: 250
+				owner: 'Michel Miasni',
+				couponId: 'coupon6',
+				value: 7,
+				expiration: '2021-01-01'
 			},
 		];
 
 		for (const asset of assets) {
 			await this.CreateAsset(
 				ctx,
-				asset.assetID,
-				asset.color,
-				asset.size,
 				asset.owner,
-				asset.appraisedValue
+				asset.couponId,
+				asset.value,
+				asset.expiration
 			);
 		}
 	}
