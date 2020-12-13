@@ -137,108 +137,47 @@ async function main() {
 
 			let result;
 
-			// Let's try a query operation (function).
-			// This will be sent to just one peer and the results will be shown.
-			// console.log('\n--> Evaluate Transaction: GetAssetsByRange, function returns assets in a specific range from asset1 to before asset6');
-			// result = await contract.evaluateTransaction('GetAssetsByRange', 'coupon1', 'coupon6');
-			// console.log(`*** Result: ${prettyJSONString(result.toString())}`);
-
-			console.log('\n--> Evaluate Transaction: GetAssetsByRange, function use an open start and open end range to return assest1 to asset6');
-			result = await contract.evaluateTransaction('GetAssetsByRange', '', '');
-			console.log(`*** Result: ${prettyJSONString(result.toString())}`);
-
-			// console.log('\n--> Evaluate Transaction: GetAssetsByRange, function use an fixed start (asset3) and open end range to return assest3 to asset6');
-			// result = await contract.evaluateTransaction('GetAssetsByRange', 'coupon3', '');
-			// console.log(`*** Result: ${prettyJSONString(result.toString())}`);
-
-			// console.log('\n--> Evaluate Transaction: GetAssetsByRange, function use an open start and fixed end (asset3) range to return assest1 to asset2');
-			// result = await contract.evaluateTransaction('GetAssetsByRange', '', 'coupon3');
+			// console.log('\n--> Evaluate Transaction: GetAssetsByRange, function use an open start and open end range to return assest1 to asset6');
+			// result = await contract.evaluateTransaction('GetAssetsByRange', '', '');
 			// console.log(`*** Result: ${prettyJSONString(result.toString())}`);
 
 			// Now let's try to submit a transaction.
 			// This will be sent to both peers and if both peers endorse the transaction, the endorsed proposal will be sent
 			// to the orderer to be committed by each of the peer's to the channel ledger.
-			// console.log('\n--> Submit Transaction: CreateAsset, creates new asset with ID(coupon7), value(5), owner(Tom Brady), and expiration(2020-12-13) arguments');
-			// await contract.submitTransaction('CreateAsset', 'Tom Brady', 'coupon7', '5', '2021-12-13');
-			// console.log('*** Result: committed');
-
-			// console.log('\n--> Evaluate Transaction: ReadAsset, function returns information about an asset with ID(asset7)');
-			// result = await contract.evaluateTransaction('ReadAsset', 'coupon7');
-			// console.log(`*** Result: ${prettyJSONString(result.toString())}`);
-
-			// console.log('\n--> Evaluate Transaction: AssetExists, function returns "true" if an asset with ID(asset7) exist');
-			// result = await contract.evaluateTransaction('AssetExists', 'coupon7');
-			// console.log(`*** Result: ${prettyJSONString(result.toString())}`);
-
-			// // Now let's try to submit a transaction that deletes an asset
-			// // This will be sent to both peers and if both peers endorse the transaction, the endorsed proposal will be sent
-			// // to the orderer to be committed by each of the peer's to the channel ledger.
-			// console.log('\n--> Submit Transaction: DeleteAsset with ID(coupon7)');
-			// await contract.submitTransaction('DeleteAsset', 'coupon7');
-			// console.log('*** Result: committed');
-
-			// console.log('\n--> Evaluate Transaction: AssetExists, function returns "false" if an asset with ID(asset7) does not exist');
-			// result = await contract.evaluateTransaction('AssetExists', 'coupon7');
-			// console.log(`*** Result: ${prettyJSONString(result.toString())}`)
-
-			// console.log('\n--> Submit Transaction: TransferAsset, transfer asset(coupon2) to new owner(Tom)');
-			// await contract.submitTransaction('TransferAsset', 'coupon2', 'Tom Brady');
-			// console.log('*** Result: committed');
+			console.log('\n--> Submit Transaction: CreateAsset, creates new asset with ID(coupon7), value(5), owner(Tom Brady), and expiration(2020-12-13) arguments');
+			const start1 = Date.now();
+			await contract.submitTransaction('CreateAsset', 'Tom Brady', 'coupon7', '5', '2021-12-13');
+			const end1 = Date.now();
+			console.log(`Execution time: ${end1 - start1} ms`);
+			console.log('*** Result: committed');
 
 			console.log('\n--> Submit Transaction: RedeemCoupon, set asset(coupon2) to redeemed');
+			const start2 = Date.now();
 			await contract.submitTransaction('SetCouponToRedeemed', 'coupon2');
+			const end2 = Date.now();
+			console.log(`Execution time: ${end2 - start2} ms`);
 			console.log('*** Result: Redeemed');
 
 			//to do: check if coupon is redeemed
 			console.log('\n--> Evaluate Transaction: CouponRedeemed, function returns "false" if an asset with ID(coupon2) is not redeemed');
+			const start3 = Date.now();
 			result = await contract.evaluateTransaction('CouponRedeemed', 'coupon2');
+			const end3 = Date.now();
+			console.log(`Execution time: ${end3 - start3} ms`);
 			console.log(`*** Result: ${prettyJSONString(result.toString())}`)
 
 			//to do: check if coupon is redeemed
-			console.log('\n--> Evaluate Transaction: CouponRedeemed, function returns "false" if an asset with ID(coupon7) is not redeemed');
-			result = await contract.evaluateTransaction('CouponRedeemed', 'coupon7');
-			console.log(`*** Result: ${prettyJSONString(result.toString())}`)
-
-			// console.log('\n--> Evaluate Transaction: ReadAsset, function returns information about an asset with ID(asset2)');
-			// result = await contract.evaluateTransaction('ReadAsset', 'coupon2');
-			// console.log(`*** Result: ${prettyJSONString(result.toString())}`);
-
-			// Rich Query with Pagination (Only supported if CouchDB is used as state database)
-			// console.log('\n--> Evaluate Transaction: QueryAssetsWithPagination, function returns "Tom Brady" assets');
-			// result = await contract.evaluateTransaction('QueryAssetsWithPagination', 'Tom Brady', '3', '');
-			// console.log(`*** Result: ${prettyJSONString(result.toString())}`);
-
-			// console.log('\n--> Submit Transaction: TransferAssetByColor, transfer all yellow assets to new owner(Michel)');
-			// await contract.submitTransaction('TransferAssetByColor', 'yellow', 'Michel');
-			// console.log('*** Result: committed');
+			// console.log('\n--> Evaluate Transaction: CouponRedeemed, function returns "false" if an asset with ID(coupon7) is not redeemed');
+			// result = await contract.evaluateTransaction('CouponRedeemed', 'coupon7');
+			// console.log(`*** Result: ${prettyJSONString(result.toString())}`)
 
 			// Rich Query (Only supported if CouchDB is used as state database):
-			console.log('\n--> Evaluate Transaction: QueryAssetsByOwner, find all assets with owner(Tom Brady)');
-			result = await contract.evaluateTransaction('QueryAssetsByOwner', 'Tom Brady');
-			console.log(`*** Result: ${prettyJSONString(result.toString())}`);
-
-			console.log('\n--> Evaluate Transaction: GetAssetHistory, get the history of an asset(asset7)');
-			result = await contract.evaluateTransaction('GetAssetHistory', 'coupon2');
-			console.log(`*** Result: ${prettyJSONString(result.toString())}`);
-
-			// Rich Query (Only supported if CouchDB is used as state database):
-			// console.log('\n--> Evaluate Transaction: QueryAssets, assets of expiration 2021-01-01');
-			// result = await contract.evaluateTransaction('QueryAssets', '{"selector":{"expiration":"2021-01-01"}}');
+			// console.log('\n--> Evaluate Transaction: QueryAssetsByOwner, find all assets with owner(Tom Brady)');
+			// result = await contract.evaluateTransaction('QueryAssetsByOwner', 'Tom Brady');
 			// console.log(`*** Result: ${prettyJSONString(result.toString())}`);
 
-			// // Rich Query with index design doc and index name specified (Only supported if CouchDB is used as state database):
-			// console.log('\n--> Evaluate Transaction: QueryAssets, Jin Soo\'s assets');
-			// result = await contract.evaluateTransaction('QueryAssets', '{"selector":{"docType":"asset","owner":"Jin Soo"}, "use_index":["_design/indexOwnerDoc", "indexOwner"]}');
-			// console.log(`*** Result: ${prettyJSONString(result.toString())}`);
-
-			// // Rich Query with Pagination (Only supported if CouchDB is used as state database)
-			// console.log('\n--> Evaluate Transaction: GetAssetsByRangeWithPagination - get page 1 of assets from asset3 to asset6 (asset3, asset4)');
-			// result = await contract.evaluateTransaction('GetAssetsByRangeWithPagination', 'asset3', 'asset6', '2', '');
-			// console.log(`*** Result: ${prettyJSONString(result.toString())}`);
-
-			// // Rich Query with Pagination (Only supported if CouchDB is used as state database)
-			// console.log('\n--> Evaluate Transaction: GetAssetsByRangeWithPagination - get page 2 of assets from asset3 to asset6 (asset4, asset5)');
-			// result = await contract.evaluateTransaction('GetAssetsByRangeWithPagination', 'asset3', 'asset6', '2', 'asset4');
+			// console.log('\n--> Evaluate Transaction: GetAssetHistory, get the history of an asset(asset7)');
+			// result = await contract.evaluateTransaction('GetAssetHistory', 'coupon2');
 			// console.log(`*** Result: ${prettyJSONString(result.toString())}`);
 
 			console.log('*** all tests completed');

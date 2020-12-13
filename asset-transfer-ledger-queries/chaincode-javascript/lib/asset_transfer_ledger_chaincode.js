@@ -100,6 +100,7 @@ class Chaincode extends Contract {
 		//  Save index entry to state. Only the key name is needed, no need to store a duplicate copy of the marble.
 		//  Note - passing a 'nil' value will effectively delete the key from state, therefore we pass null character as value
 		await ctx.stub.putState(couponRedeemedIndexKey, Buffer.from('\u0000'));
+
 	}
 
 	// ReadAsset returns the asset stored in the world state with given id.
@@ -173,7 +174,6 @@ class Chaincode extends Contract {
 
 		// TransferAsset transfers a asset by setting a new owner name on the asset
 		async SetCouponToRedeemed(ctx, assetName) {
-
 			let assetAsBytes = await ctx.stub.getState(assetName);
 			if (!assetAsBytes || !assetAsBytes.toString()) {
 				throw new Error(`Asset ${assetName} does not exist`);
