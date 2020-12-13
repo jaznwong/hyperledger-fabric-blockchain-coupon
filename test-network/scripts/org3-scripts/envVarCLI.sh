@@ -36,6 +36,11 @@ setGlobals() {
     CORE_PEER_TLS_ROOTCERT_FILE=$PEER0_ORG3_CA
     CORE_PEER_MSPCONFIGPATH=/opt/gopath/src/github.com/hyperledger/fabric/peer/organizations/peerOrganizations/org3.example.com/users/Admin@org3.example.com/msp
     CORE_PEER_ADDRESS=peer0.org3.example.com:11051
+  elif [ $ORG -eq 4 ]; then
+    CORE_PEER_LOCALMSPID="Org4MSP"
+    CORE_PEER_TLS_ROOTCERT_FILE=$PEER0_ORG4_CA
+    CORE_PEER_MSPCONFIGPATH=/opt/gopath/src/github.com/hyperledger/fabric/peer/organizations/peerOrganizations/org4.example.com/users/Admin@org4.example.com/msp
+    CORE_PEER_ADDRESS=peer0.org4.example.com:13051
   else
     echo "================== ERROR !!! ORG Unknown =================="
   fi
